@@ -5,11 +5,12 @@ const cors = require('cors');
 const path = require('path');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
+require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 8006;
 
-const mongoURI = 'mongodb+srv://kalpeshkahre7777:Kalpesh%40123@yearbook.f0h3kns.mongodb.net/yearbook';
+const mongoURI = process.env.MONGO_URI;
 
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
