@@ -7,13 +7,10 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 var http = require('http');
-const server = http.createServer(app);
-
-
 
 const app = express();
 const port = process.env.PORT || 8006;
-
+const server = http.createServer(app);
 const mongoURI = process.env.MONGO_URI;
 
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
