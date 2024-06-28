@@ -7,12 +7,9 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 var http = require('http');
+const server = http.createServer(app);
 
 
-http.createServer(function (req, res) {
-  res.write('A Monk in Cloud'); 
-  res.end(); 
-}).listen(80);
 
 const app = express();
 const port = process.env.PORT || 8006;
@@ -138,6 +135,9 @@ app.post('/api/submit', upload.fields([{ name: 'photo', maxCount: 1 }, { name: '
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 // app.listen(port, () => {
 //   console.log(`Server is running on http://localhost:${port}`);
 // });
