@@ -5,17 +5,27 @@ const cors = require('cors');
 const path = require('path');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-require('dotenv').config();
-var http = require('http');
-
 const app = express();
-const port = process.env.PORT || 8006;
-const server = http.createServer(app);
-const mongoURI = process.env.MONGO_URI;
+const port = process.env.PORT || 8086;
+const AWS = require('aws-sdk');
+const fs = require('fs');
+const util = require('util');
+
+const unlinkFile = util.promisify(fs.unlink);
+
+const mongoURI = 'mongodb+srv://kalpeshkahre7777:Kalpesh%40123@yearbook.f0h3kns.mongodb.net/yearbook';
 
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log('MongoDB connection error:', err));
+
+AWS.config.update({
+  accessKeyId: 'AKIA6ODVABP6D4SXY3UP',
+  secretAccessKey: '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',
+  region: 'eu-north-1',
+});
+
+const s3 = new AWS.S3();
 
 const userSchema = new mongoose.Schema({
   name: String,
@@ -29,9 +39,10 @@ const memorySchema = new mongoose.Schema({
   description: String,
   userName: String,
   userEmail: String,
-  photo: String,
-  video: String,
+  photos: [String],
+  videos: [String],
 }, { collection: 'responses' });
+
 
 const Memory = mongoose.model('Memory', memorySchema);
 
@@ -51,6 +62,21 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
+const uploadToS3 = async (file) => {
+  const fileStream = fs.createReadStream(file.path);
+  
+  const uploadParams = {
+    Bucket: 'yearbook-images-videos',
+    Body: fileStream,
+    Key: file.filename,
+  };
+
+  const result = await s3.upload(uploadParams).promise();
+  await unlinkFile(file.path);
+  return result.Location;
+};
+
 
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
@@ -102,24 +128,25 @@ app.post('/api/alumni-register', async (req, res) => {
 });
 
 
-app.post('/api/submit', upload.fields([{ name: 'photo', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
+app.post('/api/submit', upload.fields([{ name: 'photos' }, { name: 'videos' }]), async (req, res) => {
   const { selectedSport, selectedName, description, userName, userEmail } = req.body;
-  const photo = req.files.photo ? req.files.photo[0].path : null;
-  const video = req.files.video ? req.files.video[0].path : null;
+  const photoFiles = req.files['photos'] || [];
+  const videoFiles = req.files['videos'] || [];
 
   try {
-    // Create a new memory document
+    const photoUrls = await Promise.all(photoFiles.map(uploadToS3));
+    const videoUrls = await Promise.all(videoFiles.map(uploadToS3));
+
     const newMemory = new Memory({
       selectedSport,
       selectedName,
       description,
       userName,
       userEmail,
-      photo,
-      video,
+      photos: photoUrls,
+      videos: videoUrls,
     });
 
-    // Save the memory document to MongoDB
     await newMemory.save();
 
     res.json({ message: 'Form submitted successfully and data saved to database' });
@@ -129,12 +156,8 @@ app.post('/api/submit', upload.fields([{ name: 'photo', maxCount: 1 }, { name: '
   }
 });
 
-
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-server.listen(port, '0.0.0.0', () => {
-  console.log(`Server is running on port ${port}`);
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
 });
-// app.listen(port, () => {
-//   console.log(`Server is running on http://localhost:${port}`);
-// });
